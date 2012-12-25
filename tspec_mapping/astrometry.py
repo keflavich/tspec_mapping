@@ -2,6 +2,20 @@ import subprocess
 import status
 import shlex
 
+def _runcmd(cmd):
+    """
+    Execute a generic command string
+    (wrapper for subprocess.Popen or whatever you want)
+    """
+
+    p = subprocess.Popen(shlex.split(cmd), shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+
+    stdout,stderr = p.communicate()
+
+    return stdout.strip(),stderr.strip()
+
 # found with solve-field | perl -ne 'm/--([a-z-]*)/; print "$1\n"' | uniq
 def _solve_field_defaults():
     return {
@@ -183,7 +197,7 @@ Note that most output files can be disabled by setting the filename to "none".
     
     solve_field_args = _solve_field_defaults()
     for key,val in kwargs.iteritems():
-        if key in solve_field_args:
+        if key in solve_field_args.iteritems():
             solve_field_args[key] = val
         elif key.replace("_","-") in solve_field_args:
             solve_field_args[key.replace("_","-")] = val
@@ -191,29 +205,54 @@ Note that most output files can be disabled by setting the filename to "none".
     cmd = "solve_field "
     for key,val in solve_field_args:
         if val is True:
-            cmd.append("--%s " % key)
+            cmd += "--%s " % key
         elif val is not None:
-            cmd.append("--%s %s " % (key,val))
+            cmd += "--%s %s " % (key,val)
 
-    p = subprocess.Popen(shlex.split(cmd), shell=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-
-    stdout,stderr = p.communicate()
-
-    return stdout.strip(),stderr.strip()
-
-def _build_index_args():
-    defargs = {'sort_column':'S',
-            'scale_number':'P',
-            'nside':'N',
-            'min_quad_size':,'l',
-            'max_quad_size':,'u',
-            'reverse_sortorder':'f',
-            'healpix_nside':'U',
+    return _runcmd(cmd)
 
 
-def build_index(infile, index_dir=None, sort_column=None, **kwargs):
+def _build_index_args(**kwargs):
+    argkeys = {'sort_column':'S', 'scale_number':'P', 'nside':'N',
+            'min_quad_size':,'l', 'max_quad_size':,'u',
+            'reverse_sortorder':'f', 'healpix_nside':'U', 'big_healpix':'H',
+            'big_healpix_nside','s', 'margin':'m', 'sweeps':'n',
+            'dedup_radius':'r', 'jitter_arcsec':'j', 'dimquads':'d',
+            'passes':'p', 'reuse_times':'R', 'max_reuses':'L',
+            'scan_catalog':'E', 'unique_id':'I', 'in_memory':'M',
+            'keep_temp':'T', 'verbose':'v', }
+    defaults = dict([(k,None) for k in argkeys.keys()])
+    defaults['reverse_sortorder'] = False
+    defaults['big_healpix_nside'] = 1
+    defaults['sweeps'] = 10
+    defaults['margin'] = 0
+    defaults['jitter_arcsec'] = 1
+    defaults['dimquads'] = 4
+    defaults['passes'] = 16
+    defaults['reuse_times'] = 8
+    defaults['in_memory'] = False
+    defaults['keep_temp'] = False
+    defaults['verbose'] = False
+
+    args = {}
+
+    for k,v in kwargs.iteritems():
+        if k not in argkeys.keys():
+            raise ValueError("%s is not a valid key" % k)
+        else:
+            charkey = argkeys[k]
+            if k in defaults.keys():
+                # only set arg if it's not the default
+                if defaults[k] != v:
+                    args[charkey] = v
+            else: # those with no defaults get set 
+                args[charkey] = v
+
+    return args
+
+
+
+def build_index(infile, index_dir=None, **kwargs):
     """
 Usage: build-index
       (
@@ -258,4 +297,16 @@ Usage: build-index
       [-M]: in-memory (don't use temp files)
       [-T]: don't delete temp files
       [-v]: add verbosity.
-"""        
+    """        
+    args = _build_index_args(**kwargs)
+
+    cmd = "build_index "
+
+    for key,val in args.iteritems():
+        if val is True:
+            # booleans just get the -A arg added...
+            cmd += "-%s " % key
+        elif val is not None:
+            cmd += "-%s %s " % (key,val)
+
+    return _runcmd(cmd)
