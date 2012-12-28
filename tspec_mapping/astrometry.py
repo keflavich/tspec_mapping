@@ -1,6 +1,7 @@
 import subprocess
 import status
 import shlex
+import os
 
 def _runcmd(cmd):
     """
@@ -252,7 +253,8 @@ def _build_index_args(**kwargs):
 
 
 
-def build_index(infile, index_dir=None, **kwargs):
+data_path = build_index_path.split()[0]+"/data/"
+def build_index(infile, outfile=None, index_dir=None, **kwargs):
     """
 Usage: build-index
       (
@@ -302,6 +304,18 @@ Usage: build-index
 
     cmd = "build_index "
 
+    outdir = _get_index_dir()
+    if outfile is None:
+        cmd += "-o %s " % (outdir+outfile)
+    else:
+        if "P" in args:
+            outfile = infile+"_P%s.index" % args["P"]
+        elif "N" in args:
+            outfile = infile+"_N%s.index" % args["N"]
+        else:
+            outfile = infile+".index"
+        cmd += "-o %s " % (outdir+outfile)
+
     for key,val in args.iteritems():
         if val is True:
             # booleans just get the -A arg added...
@@ -310,3 +324,12 @@ Usage: build-index
             cmd += "-%s %s " % (key,val)
 
     return _runcmd(cmd)
+
+def _get_index_dir():
+    """
+    Use the path to the build-index executable to determine the path to the
+    astrometry.net build indices
+    """
+    build_index_path = os.path.split(os.popen('which build-index').read().strip())[0]
+    data_path = build_index_path.split()[0]+"/data/"
+    return data_path
