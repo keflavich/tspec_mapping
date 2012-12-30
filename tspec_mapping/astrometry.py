@@ -1,5 +1,4 @@
 import subprocess
-import status
 import shlex
 import os
 
@@ -253,8 +252,7 @@ def _build_index_args(**kwargs):
 
 
 
-data_path = build_index_path.split()[0]+"/data/"
-def build_index(infile, outfile=None, index_dir=None, **kwargs):
+def build_index(infile, outfile=None, index_dir=None, debug=False, **kwargs):
     """
 Usage: build-index
       (
@@ -302,10 +300,11 @@ Usage: build-index
     """        
     args = _build_index_args(**kwargs)
 
-    cmd = "build_index "
+    build_index = os.popen('which build-index').read()
+    cmd = "%s -i %s " % (build_index,infile)
 
     outdir = _get_index_dir()
-    if outfile is None:
+    if outfile is not None:
         cmd += "-o %s " % (outdir+outfile)
     else:
         if "P" in args:
@@ -323,6 +322,9 @@ Usage: build-index
         elif val is not None:
             cmd += "-%s %s " % (key,val)
 
+    if debug:
+        print cmd
+
     return _runcmd(cmd)
 
 def _get_index_dir():
@@ -331,5 +333,7 @@ def _get_index_dir():
     astrometry.net build indices
     """
     build_index_path = os.path.split(os.popen('which build-index').read().strip())[0]
-    data_path = build_index_path.split()[0]+"/data/"
+    data_path = os.path.split(build_index_path)[0]+"/data/"
+    if not os.access(data_path,os.W_OK):
+        raise IOError("Permissions in output directory %s do not allow writing" % data_path)
     return data_path
