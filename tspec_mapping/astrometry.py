@@ -1,6 +1,7 @@
 import subprocess
 import shlex
 import os
+import numpy as np
 
 def _runcmd(cmd):
     """
@@ -337,3 +338,20 @@ def _get_index_dir():
     if not os.access(data_path,os.W_OK):
         raise IOError("Permissions in output directory %s do not allow writing" % data_path)
     return data_path
+
+
+def get_closest_preset(fieldsize):
+    """
+    Given a field size in arcminutes, return the preset with the closest field
+    size
+    """
+    # from build-index-main.c
+    scales = [0.35, 0.5, 0.7, 1., 1.4,
+              2., 2.8, 4., 5.6, 8., 11., 16., 22., 30., 42., 60., 85.,
+              120., 170., 240., 340., 480., 680., 1000., 1400., 2000. ]
+    scale_numbers = [x-5 for x in range(len(scales))]
+
+    closest_fieldsize = np.argmin(np.abs(np.array(scales)-fieldsize))
+    closest_scale = scale_numbers[closest_fieldsize]
+    return closest_scale
+

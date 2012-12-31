@@ -4,22 +4,24 @@ import astropy.io.fits
 import numpy as np
 import atpy
 
-def make_index_from_field(coords,fieldname,fov=900,clobber=False,**kwargs):
+def make_index_from_table(table,fieldname,fov=None,clobber=False,**kwargs):
     """
-    Input coords... arcsecs...
+    Given a table with RA and Dec columns (case-sensitive!), build an astrometry.net
+    quad index
 
-    Example
-    -------
-    make_index_from_field('Sgr C','Sgr C',300,scan_catalog=True,scale_number=-1,clobber=True)
-    tbl = astroquery.irsa.query_gator_box('pt_src_cat','83.808 -5.391',300)
-    
+    Parameters
+    ----------
+    table : Table
+        astropy.io.table or atpy.table instance (recarrays require different cleaning operations)
+    fieldname : str
+        Seed name for the output catalog file and index file
+    clobber : bool
+        Overwrite existing fits files / indices?
+    kwargs : 
+        Are passed to astrometry.build_index
     """
 
-    table = astroquery.irsa.query_gator_box('pt_src_cat',coords,fov)
-    table.rename_column('ra','RA')
-    table.rename_column('dec','Dec')
-    cleantable = _clean_table(table)
-    fitstable = astropy.io.fits.BinTableHDU(data=cleantable)
+    fitstable = astropy.io.fits.BinTableHDU(data=table)
     newtable = atpy.Table()
     for colname in table.columns:
         newtable.add_column(colname, table[colname])
@@ -30,18 +32,97 @@ def make_index_from_field(coords,fieldname,fov=900,clobber=False,**kwargs):
     #fitstable.writeto(fieldname+".fits",clobber=clobber)
     newtable.write(fieldname+".fits",overwrite=clobber)
 
-    status = astrometry.build_index(fieldname+".fits",**kwargs)
+    if fov is None:
+        # guess the FOV... sort of
+        rarange = (np.max(table['RA']) - np.min(table['RA']))*3600
+        decrange = (np.max(table['Dec'])-np.min(table['Dec']))*3600
+        fov = (rarange+decrange)/2.
+
+    return make_index_from_fitstable(fieldname+'.fits',fieldname,fov=fov,**kwargs)
+
+def make_index_from_fitstable(fitstablename, fieldname=None, fov=None, **kwargs):
+    """
+    Build an index from a FITS table already on disk (very thin wrapper of build_index)
+
+    Parameters
+    ----------
+    fitstablename : str
+        Full path to a .fits table with the 2nd header being a BinTableHDU for
+        astrometry's build-index to parse
+    fov : int
+        field of view in arcseconds
+    fieldname : str
+        output prefix for the index file.  If not specified, will use the root string
+        of the fitsfilename
+    """
+    
+    if fov is None and 'scale_number' not in kwargs:
+        raise ValueError("Must specify a preset or a FOV")
+    elif 'scale_number' in kwargs:
+        presets = [kwargs.pop('scale_number')]
+    else:
+        # determine appropriate "presets" to use
+        preset = astrometry.get_closest_preset(fov/60.)
+        if preset > -5:
+            presets = [preset-1,preset,preset+1]
+        else:
+            presets = [preset,preset+1]
+    
+    if fieldname is None:
+        fieldname = os.path.split( os.path.splitext(fitstablename)[0] )[1]
+
+    for preset in presets:
+        status = astrometry.build_index(fieldname+".fits",scale_number=preset,**kwargs)
 
     return status
 
-    #T = atpy.Table()
-    #[T.add_column(n,ORION[n]) for n in ORION.columns]
-    #T.write('2MASS_orion_cat.fits')
-    #T2 = atpy.Table()
-    #T2.add_column('RA',T.ra)
-    #T2.add_column('Dec',T.dec)
-    #T2.add_column('Kmag',T.k_m)
-    #T2.write('2MASS_orion_cat_simple.fits')
+def make_index_from_field_IRSA(coords,fieldname,fov=900,clobber=False,**kwargs):
+    """
+    Create an index file.  The input should be IRSA-parseable coordinates, e.g.
+    a name, ra/dec, or glon/glat coords
+
+    Example
+    -------
+    >>> make_index_from_field_IRSA('Sgr C','Sgr C',300,scan_catalog=True,clobber=True)
+    >>> make_index_from_field_IRSA('266.1512 -29.4703','Sgr C',300,scan_catalog=True,clobber=True)
+    >>> make_index_from_field_IRSA('359.4288 -00.0898 gal','Sgr C',300,scan_catalog=True,clobber=True)
+    
+    """
+
+    fieldname = fieldname.replace(" ","_") # what other chars should I be careful of? 
+
+    table = astroquery.irsa.query_gator_box('pt_src_cat',coords,fov)
+    table.rename_column('ra','RA')
+    table.rename_column('dec','Dec')
+    cleantable = _clean_table(table)
+
+    return make_index_from_table(cleantable,fov=fov,clobber=clobber,**kwargs)
+
+def make_index_from_field_UKIDSS(glon,glat,fieldname,catalog='GPS',fov=900,clobber=False,**kwargs):
+    """
+    Create an index file.  The input should be UKIDSS-parseable coordinates, e.g.
+    glon,glat (so far, only a galactic lon/lat query tool is implemented
+
+    Example
+    -------
+    >>> make_index_from_field_UKIDSS(359.4288,-00.0898,'Sgr C',fov=300,scan_catalog=True,clobber=True)
+    
+    """
+
+    fieldname = fieldname.replace(" ","_") # what other chars should I be careful of? 
+
+    ukquery = astroquery.ukidss.UKIDSSQuery()
+    ukquery.programmeID = catalog
+    uktable = ukquery.get_catalog_gal(glon,glat,radius=fov/60.)[0]
+    uktable.writeto(fieldname+".fits",clobber=clobber)
+    #bintab = table[0][1]
+    #bintab.data = bintab.data.astype(newtype)
+    #table.rename_column('ra','RA')
+    #table.rename_column('dec','Dec')
+    #cleantable = _clean_table(table)
+
+    return make_index_from_fitstable(fieldname+".fits",fieldname=fieldname,fov=fov,**kwargs)
+
 
 def _clean_table(table):
     """
