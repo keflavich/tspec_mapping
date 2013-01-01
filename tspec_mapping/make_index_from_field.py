@@ -23,7 +23,7 @@ def make_index_from_table(table,fieldname,fov=None,clobber=False,**kwargs):
 
     fitstable = astropy.io.fits.BinTableHDU(data=table)
     newtable = atpy.Table()
-    for colname in table.columns:
+    for colname in table.dtype.names:
         newtable.add_column(colname, table[colname])
 
     # sanitize fieldname
@@ -71,21 +71,24 @@ def make_index_from_fitstable(fitstablename, fieldname=None, fov=None, **kwargs)
     if fieldname is None:
         fieldname = os.path.split( os.path.splitext(fitstablename)[0] )[1]
 
+    stdout,stderr = ""
     for preset in presets:
-        status = astrometry.build_index(fieldname+".fits",scale_number=preset,**kwargs)
+        _stdout,_stderr = astrometry.build_index(fieldname+".fits",scale_number=preset,**kwargs)
+        stdout += _stdout
+        stderr += _stderr
 
-    return status
+    return stdout,stderr
 
-def make_index_from_field_IRSA(coords,fieldname,fov=900,clobber=False,**kwargs):
+def make_index_from_field_2MASS(coords,fieldname,fov=900,clobber=False,**kwargs):
     """
     Create an index file.  The input should be IRSA-parseable coordinates, e.g.
     a name, ra/dec, or glon/glat coords
 
     Example
     -------
-    >>> make_index_from_field_IRSA('Sgr C','Sgr C',300,scan_catalog=True,clobber=True)
-    >>> make_index_from_field_IRSA('266.1512 -29.4703','Sgr C',300,scan_catalog=True,clobber=True)
-    >>> make_index_from_field_IRSA('359.4288 -00.0898 gal','Sgr C',300,scan_catalog=True,clobber=True)
+    >>> make_index_from_field_2MASS('Sgr C','Sgr C',300,scan_catalog=True,clobber=True)
+    >>> make_index_from_field_2MASS('266.1512 -29.4703','Sgr C',300,scan_catalog=True,clobber=True)
+    >>> make_index_from_field_2MASS('359.4288 -00.0898 gal','Sgr C',300,scan_catalog=True,clobber=True)
     
     """
 
@@ -96,7 +99,7 @@ def make_index_from_field_IRSA(coords,fieldname,fov=900,clobber=False,**kwargs):
     table.rename_column('dec','Dec')
     cleantable = _clean_table(table)
 
-    return make_index_from_table(cleantable,fov=fov,clobber=clobber,**kwargs)
+    return make_index_from_table(cleantable,fieldname,fov=fov,clobber=clobber,**kwargs)
 
 def make_index_from_field_UKIDSS(glon,glat,fieldname,catalog='GPS',fov=900,clobber=False,**kwargs):
     """
@@ -129,7 +132,7 @@ def _clean_table(table):
     Hack to convert a table to a FITS-friendly numpy ndarray;
     this will become obsolete when astropy's table includes a FITS writer
     """
-    new_fields = [(k,np.dtype('S%i' % v[1])) if v[0].type == np.object_ else (k,v)  
+    new_fields = [(k,np.dtype('S8')) if v[0].type == np.object_ else (k,v[0])  
                   for (k,v) in table._data.dtype.fields.iteritems()]
     new_array = np.array(table._data, dtype=new_fields)
 

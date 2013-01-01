@@ -45,7 +45,7 @@ def _solve_field_defaults():
     "height":None, "x-column":None, "y-column":None, "sort-column":None,
     "sort-ascending":None,         }
 
-def solve_field(filename, **kwargs):
+def solve_field(filename, debug=False, **kwargs):
     """
     Solve a field.  Specify command line arguments with kwargs.  Short versions
     of command-line args are not supported. If an option has a dash in it, use
@@ -195,6 +195,9 @@ Note that most output files can be disabled by setting the filename to "none".
  (If you have a sick sense of humour and you really want to name your output
   file "none", you can use "./none" instead.)
     """
+
+    if not os.path.exists(filename):
+        raise IOError("Targeted file does not exist")
     
     solve_field_args = _solve_field_defaults()
     for key,val in kwargs.iteritems():
@@ -203,12 +206,18 @@ Note that most output files can be disabled by setting the filename to "none".
         elif key.replace("_","-") in solve_field_args:
             solve_field_args[key.replace("_","-")] = val
 
-    cmd = "solve_field "
-    for key,val in solve_field_args:
+    solve_field = os.popen('which solve-field').read()
+    cmd = "%s " % solve_field
+    for key,val in solve_field_args.iteritems():
         if val is True:
             cmd += "--%s " % key
         elif val is not None:
             cmd += "--%s %s " % (key,val)
+
+    cmd += filename
+
+    if debug:
+        print cmd
 
     return _runcmd(cmd)
 
