@@ -71,7 +71,7 @@ def make_index_from_fitstable(fitstablename, fieldname=None, fov=None, **kwargs)
     if fieldname is None:
         fieldname = os.path.split( os.path.splitext(fitstablename)[0] )[1]
 
-    stdout,stderr = ""
+    stdout,stderr = "",""
     for preset in presets:
         _stdout,_stderr = astrometry.build_index(fieldname+".fits",scale_number=preset,**kwargs)
         stdout += _stdout
