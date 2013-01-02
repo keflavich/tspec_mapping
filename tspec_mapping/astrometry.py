@@ -224,6 +224,7 @@ Note that most output files can be disabled by setting the filename to "none".
 
 def _build_index_args(**kwargs):
     argkeys = {'sort_column':'S', 'scale_number':'P', 'nside':'N',
+            'preset':'P', # duplicate
             'min_quad_size':'l', 'max_quad_size':'u',
             'reverse_sortorder':'f', 'healpix_nside':'U', 'big_healpix':'H',
             'big_healpix_nside':'s', 'margin':'m', 'sweeps':'n',

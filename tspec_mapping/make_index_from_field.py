@@ -21,8 +21,8 @@ def make_index_from_table(table,fieldname,fov=None,clobber=False,**kwargs):
         Are passed to astrometry.build_index
     """
 
-    fitstable = astropy.io.fits.BinTableHDU(data=table)
-    newtable = atpy.Table()
+    #fitstable = astropy.io.fits.BinTableHDU(data=table)
+    newtable = atpy.Table(name=fieldname)
     for colname in table.dtype.names:
         newtable.add_column(colname, table[colname])
 
@@ -40,7 +40,7 @@ def make_index_from_table(table,fieldname,fov=None,clobber=False,**kwargs):
 
     return make_index_from_fitstable(fieldname+'.fits',fieldname,fov=fov,**kwargs)
 
-def make_index_from_fitstable(fitstablename, fieldname=None, fov=None, **kwargs):
+def make_index_from_fitstable(fitstablename, fieldname=None, fov=None, preset_list=None, **kwargs):
     """
     Build an index from a FITS table already on disk (very thin wrapper of build_index)
 
@@ -49,6 +49,8 @@ def make_index_from_fitstable(fitstablename, fieldname=None, fov=None, **kwargs)
     fitstablename : str
         Full path to a .fits table with the 2nd header being a BinTableHDU for
         astrometry's build-index to parse
+    preset_list : list
+        List of presets, in the range -5 to 21, to build indices for
     fov : int
         field of view in arcseconds
     fieldname : str
@@ -56,14 +58,18 @@ def make_index_from_fitstable(fitstablename, fieldname=None, fov=None, **kwargs)
         of the fitsfilename
     """
     
-    if fov is None and 'scale_number' not in kwargs:
+    if fov is None and 'scale_number' not in kwargs and preset_list is None:
         raise ValueError("Must specify a preset or a FOV")
     elif 'scale_number' in kwargs:
         presets = [kwargs.pop('scale_number')]
+    elif preset_list is not None:
+        presets = preset_list
     else:
         # determine appropriate "presets" to use
         preset = astrometry.get_closest_preset(fov/60.)
-        if preset > -5:
+        if preset > -4:
+            presets = [preset-2, preset-1,preset,preset+1]
+        elif preset > -5:
             presets = [preset-1,preset,preset+1]
         else:
             presets = [preset,preset+1]
@@ -132,7 +138,9 @@ def _clean_table(table):
     Hack to convert a table to a FITS-friendly numpy ndarray;
     this will become obsolete when astropy's table includes a FITS writer
     """
-    new_fields = [(k,np.dtype('S8')) if v[0].type == np.object_ else (k,v[0])  
+    float_types = [np.float, np.float128, np.float16, np.float32, np.float64, np.float_, np.floating]
+    new_fields = [(k,np.dtype('S8')) if v[0].type == np.object_ else 
+                  (k,np.float64) if v[0].type in float_types else (k,v[0])  
                   for (k,v) in table._data.dtype.fields.iteritems()]
     new_array = np.array(table._data, dtype=new_fields)
 
