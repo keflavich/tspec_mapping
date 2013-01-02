@@ -3,6 +3,7 @@ import astrometry
 import astropy.io.fits
 import numpy as np
 import atpy
+import os
 
 def make_index_from_table(table,fieldname,fov=None,clobber=False,**kwargs):
     """

@@ -202,9 +202,16 @@ Note that most output files can be disabled by setting the filename to "none".
     solve_field_args = _solve_field_defaults()
     for key,val in kwargs.iteritems():
         if key in solve_field_args.iteritems():
-            solve_field_args[key] = val
+            if val is False:
+                solve_field_args.pop(key)
+            else:
+                solve_field_args[key] = val
         elif key.replace("_","-") in solve_field_args:
-            solve_field_args[key.replace("_","-")] = val
+            underscore_key = key.replace("_","-")
+            if val is False:
+                solve_field_args.pop(underscore_key)
+            else:
+                solve_field_args[underscore_key] = val
 
     solve_field = os.popen('which solve-field').read()
     cmd = "%s " % solve_field
