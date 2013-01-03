@@ -86,10 +86,24 @@ def make_index_from_fitstable(fitstablename, fieldname=None, fov=None, preset_li
 
     return stdout,stderr
 
-def make_index_from_field_2MASS(coords,fieldname,fov=900,clobber=False,**kwargs):
+def make_index_from_field_2MASS(coords, fieldname, fov=900, clobber=False,
+        quality_exclude="UX", **kwargs):
     """
     Create an index file.  The input should be IRSA-parseable coordinates, e.g.
     a name, ra/dec, or glon/glat coords
+
+    Parameters
+    ----------
+    coords : str
+        IRSA-parseable coordinates or SIMBAD-readable filename
+    fieldname : str
+        Prefix string for output file name
+    fov : int
+        Field of view to include in arcseconds (Circular)
+    clobber : bool
+        Overwrite existing data files?
+    quality_exclude : str
+        Entries in the catalog with these characters will be excluded
 
     Example
     -------
@@ -104,6 +118,8 @@ def make_index_from_field_2MASS(coords,fieldname,fov=900,clobber=False,**kwargs)
     table = astroquery.irsa.query_gator_box('pt_src_cat',coords,fov)
     table.rename_column('ra','RA')
     table.rename_column('dec','Dec')
+    table = table[table['extd_flg']==0] # don't use extended sources; they're bad for astrometry
+
     cleantable = _clean_table(table)
 
     return make_index_from_table(cleantable,fieldname,fov=fov,clobber=clobber,**kwargs)

@@ -2,6 +2,10 @@ import subprocess
 import shlex
 import os
 import numpy as np
+try:
+    import astropy.io.fits as pyfits
+except ImportError:
+    import pyfits
 
 def _runcmd(cmd):
     """
@@ -199,19 +203,7 @@ Note that most output files can be disabled by setting the filename to "none".
     if not os.path.exists(filename):
         raise IOError("Targeted file does not exist")
     
-    solve_field_args = _solve_field_defaults()
-    for key,val in kwargs.iteritems():
-        if key in solve_field_args.iteritems():
-            if val is False:
-                solve_field_args.pop(key)
-            else:
-                solve_field_args[key] = val
-        elif key.replace("_","-") in solve_field_args:
-            underscore_key = key.replace("_","-")
-            if val is False:
-                solve_field_args.pop(underscore_key)
-            else:
-                solve_field_args[underscore_key] = val
+    solve_field_args = parse_solve_field_args(_solve_field_defaults(), filename, **kwargs)
 
     solve_field = os.popen('which solve-field').read()
     cmd = "%s " % solve_field
@@ -228,6 +220,31 @@ Note that most output files can be disabled by setting the filename to "none".
 
     return _runcmd(cmd)
 
+def parse_solve_field_args(solve_field_args, filename, radius_centered=None, **kwargs):
+
+    for key,val in kwargs.iteritems():
+        if key in solve_field_args.iteritems():
+            if val is False:
+                solve_field_args.pop(key)
+            else:
+                solve_field_args[key] = val
+        elif key.replace("_","-") in solve_field_args:
+            underscore_key = key.replace("_","-")
+            if val is False:
+                solve_field_args.pop(underscore_key)
+            else:
+                solve_field_args[underscore_key] = val
+
+    # deal with "special" kwargs
+    if radius_centered is not None:
+        header = pyfits.getheader(filename)
+        # for now, assume ra/dec image
+        ra,dec = header['CRVAL1'],header['CRVAL2']
+        solve_field_args['ra'] = ra
+        solve_field_args['dec'] = dec
+        solve_field_args['radius'] = radius_centered
+
+    return solve_field_args
 
 def _build_index_args(**kwargs):
     argkeys = {'sort_column':'S', 'scale_number':'P', 'nside':'N',
