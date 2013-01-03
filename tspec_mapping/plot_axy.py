@@ -2,8 +2,6 @@
 Essentially a replacement of the plot_axy code in astrometry.net because mine
 didn't work
 """
-import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as pl
 pl.ioff()
 import numpy as np

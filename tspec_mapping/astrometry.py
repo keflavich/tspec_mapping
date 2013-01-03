@@ -7,13 +7,13 @@ try:
 except ImportError:
     import pyfits
 
-def _runcmd(cmd):
+def _runcmd(cmd, shell=False):
     """
     Execute a generic command string
     (wrapper for subprocess.Popen or whatever you want)
     """
 
-    p = subprocess.Popen(shlex.split(cmd), shell=False,
+    p = subprocess.Popen(shlex.split(cmd), shell=shell,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
 
