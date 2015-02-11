@@ -112,6 +112,7 @@ for fn in glob.glob("*_cube.fits"):
                               allow_smooth=False,
                               progressbar=True,
                               add_with_kernel=True,
+                              default_unit=u.um,
                               kernel_fwhm=1.0/3600.)
                               #debug=1)
 
