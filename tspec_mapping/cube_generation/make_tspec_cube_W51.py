@@ -21,9 +21,11 @@ else:
 makecube.generate_header(290.94251, 14.4748, naxis1=400, naxis2=400,
                          naxis3=4648, coordsys='radec', ctype3='WAVE',
                          crval3=22300,
+                         cd3=1.0,
+                         cunit3='Angstrom',
                          pixsize=1, bunit='erg/s/cm2/AA',
                          output_cubeheader='cube.hdr',
-                         output_flatheader='flat.hdr')
+                         output_flatheader='flat.hdr',clobber=True)
 
 if True: # not os.path.exists(cubefilename):
     cubeheader = pyfits.Header.fromtextfile('cube.hdr',endcard=False)
@@ -98,7 +100,8 @@ for fn in glob.glob("*W51*_cube.fits"):
     makecube.add_file_to_cube(fn,
                               cubefilename,
                               flatheader='flat.hdr',
-                              cubeheader='cube.hdr', nhits=nhitsfilename,
+                              cubeheader='cube.hdr',
+                              nhits=nhitsfilename,
                               data_iterator=data_iterator,
                               coord_iterator=coord_iterator,
                               velo_iterator=velo_iterator,
@@ -106,6 +109,7 @@ for fn in glob.glob("*W51*_cube.fits"):
                               progressbar=True,
                               add_with_kernel=True,
                               kernel_fwhm=1.0/3600.,
+                              default_unit=u.um,
                               debug=1)
 
     print "Completed file %s" % fn
