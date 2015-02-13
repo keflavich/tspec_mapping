@@ -87,7 +87,7 @@ for fn in glob.glob("*_cube.fits"):
 
     def coord_iterator(data, **kwargs):
         for x,y in zip(xinds.ravel(),yinds.ravel()):
-            ra,dec = W.wcs_pix2sky(x,y,0)
+            ra,dec = W.wcs_pix2world(x,y,0)
             yield ra,dec
 
     def velo_iterator(data,linefreq=None, **kwargs):
