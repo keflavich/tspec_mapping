@@ -78,7 +78,7 @@ for fn in glob.glob("*_cube.fits"):
 
     hdr = pyfits.getheader(fn)
     W = wcs.WCS(pyspeckit.cubes.flatten_header(hdr))
-    yinds,xinds = np.indices([W.naxis2,W.naxis1])
+    yinds,xinds = np.indices([hdr['NAXIS2'], hdr['NAXIS1']])
     wavel = hdr['CRVAL3'] + hdr['CD3_3']*(np.arange(hdr['NAXIS3'])+1-hdr['CRPIX3'])
 
     def data_iterator(data, **kwargs):
